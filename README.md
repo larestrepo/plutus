@@ -1,23 +1,25 @@
-# plutus
-plutus pioneer program
+# This repo contains instrunctions to setup the environment for plutus as part of the plutus pioneer program training.
 
+### HW recommendations:
 
-## Installation 
+    Ubuntu on VPS, virtualbox or WSL
+    At least 30GB harddrive
+    Decent RAM
 
 ### Installing NIX
 
     sudo apt update
     sudo apt upgrade -y
 
-Make Single user installation 
+Make Single user installation. For details go to https://nixos.org
 
         sh <(curl -L https://nixos.org/nix/install) --no-daemon
         
- Do not forget to source the path: 
+ Do not forget to source the path as recommended at the end of the installation: 
  
     . /home/<use_name>/.nix-profile/etc/profile.d/nix.sh
         
-Edit nix.conf file to decrease the amount of time for building
+Edit nix.conf file to decrease the amount of time for building.
 In case of not having /etc/nix/nix.confg create ~/.config/nix/nix.conf instead. Add the following lines:
 
       substituters        = https://hydra.iohk.io https://iohk.cachix.org https://cache.nixos.org/
