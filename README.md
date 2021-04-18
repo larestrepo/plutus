@@ -85,11 +85,49 @@ In other terminal start the Playground client with nix-shell
     cd plutus
     nix-shell
 
-    cd pluts-playground-client 
+    cd plutus-playground-client 
     npm run start
 
 ### Access the playground
 
 it should be running on: https://localhost:8009
+
+This completes the installation of the Playground 
+
+# Running cabal locally
+
+At this point it is only possible to compile plutus in the playground but it should be possible to compile the program locally so we don't need paste it in the playground for compilation. Also we are going to install IDE for coding. Personally I use Visual Studio Code but you can use the one of your preference. 
+
+If not done, clone the repository from the pluts pioneer program
+
+    git clone https://github.com/input-output-hk/plutus-pioneer-program.git
+    
+This can be located besides the plutus folder previously clone during the playground setup. 
+
+    ~/plutus
+    ~/plutus-pioneer-program
+    
+In the plutus folder start nix-shell
+
+    cd ~/plutus
+    nix-shell
+    
+Then go to Week01 folder and build cabal
+
+    cd ~/plutus-pioneer-program
+    cabal update
+    cabal build
+    
+### Install Visual Studio code
+
+Install visual studio code in linux should be straightforward. Install the Haskell extensions and Vim editor if you like.
+
+With nix-shell active go to the project folder i.e. Week02 folder
+
+    code .
+    
+
+
+
 
 
