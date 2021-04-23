@@ -121,7 +121,7 @@ Then go to Week01 folder and build cabal
  Now you can compile in your terminal the contract. Typical commands are:
  
     cabal repl -> starts the cabal compiler
-    :l /src/Week02/<name of the module> -> loads the module
+    :l src/Week02/<name of the module> -> loads the module
     .r -> compiles and check for errors
     :t -> search command
     
