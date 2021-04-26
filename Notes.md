@@ -1,4 +1,4 @@
-# This are my personal notes 
+# These are my personal notes 
 
 ### Week2
 
