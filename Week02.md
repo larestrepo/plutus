@@ -38,3 +38,7 @@ The haskell function needs to be converted into a Plutus validator function to b
 Combined with the inlinable 
  
      {-# INLINABLE mkValidator #-}
+     
+     
+     
+
