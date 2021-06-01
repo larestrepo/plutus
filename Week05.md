@@ -15,7 +15,7 @@ And the value is given by these 2 as well:
 ```Haskell
 newtype Value = Value { getValue :: Map.Map CurrencySymbol (Map.Map TokenName Integer) }
 ```
-There's a function caled lovelaceValueOf which takes an integer and returns a Value.
+There's a function called lovelaceValueOf which takes an integer and returns a Value.
 
 To create Values for tokens other than ADA, we can use singleton
 
@@ -86,7 +86,7 @@ mint mp = do
     Contract.logInfo @String $ printf "forged %s" (show val)
 ```
 
-It takes the MintParams and returns the contract. It takes 4 parameters.
+It takes the MintParams and returns the contract. It takes 4 parameters as it's been seen in previous lecture.
 - w: Tell/Writer is not used. (written in lower case to indicate is not used)
 - FreeSchema: (Blockchain actions) which access to the Endpoint previously defined
 - Text: for erro messages 
@@ -125,6 +125,105 @@ Boilerplate function to make it available in the playground.
 mkPolicy :: PubKeyHash -> ScriptContext -> Bool
 mkPolicy pkh ctx = txSignedBy (scriptContextTxInfo ctx) pkh
 ```
+In this case, the contract has 2 inputs PubKeyhash (Redeemer) and the context. It means that it must be signed to mint or burn tokens.
+ScriptContextTxInfo in our ScriptContext (ctx) contains all the signatories of the transaction; by using txSignedBy we can check if our PubKeyHash is in this list.
+txSignedBy takes the TxInfo and a PubKeyHash and returns a boolean.
+
+```Haskell
+txSignedBy :: TxInfo -> PubKeyHash -> Bool
+
+policy :: PubKeyHash -> Scripts.MonetaryPolicy
+policy pkh = mkMonetaryPolicyScript $
+    $$(PlutusTx.compile [|| Scripts.wrapMonetaryPolicy . mkPolicy ||])
+    `PlutusTx.applyCode`
+    PlutusTx.liftCode pkh
+
+curSymbol :: PubKeyHash -> CurrencySymbol
+curSymbol = scriptCurrencySymbol . policy
+```
+This is changed because we are parameterizing the pubKeyHash
+
+```Haskell
+mint :: MintParams -> Contract w SignedSchema Text ()
+mint mp = do
+    pkh <- pubKeyHash <$> Contract.ownPubKey
+    let val     = Value.singleton (curSymbol pkh) (mpTokenName mp) (mpAmount mp)
+        lookups = Constraints.monetaryPolicy $ policy pkh
+        tx      = Constraints.mustForgeValue val
+    ledgerTx <- submitTxConstraintsWith @Void lookups tx
+    void $ awaitTxConfirmed $ txId ledgerTx
+    Contract.logInfo @String $ printf "forged %s" (show val)
+```
+
+To get the pubKeyHash of our contract, we'll use the pubKeyHash function together with our Contract.ownPubKey.
+
+Using the <$> operator, which is just a synonym for fmap
+
+## NFT
+
+Without Plutus, NFTs are not really NFTs. Option 1 is to mint only 1, but this is a restriction only for the transaction. Option 2 is to define a deadline. 
+
+With Plutus we can attach the UTxO which is really unique associated to the NFT, hence really unique. By only allowing one UTxO to mint, we will have a true NFT.
+A transaction with 0 input and only outputs without values could not be unique; except for the fees which makes them really unique.
+
+For an NFT contracct the pubkeyhash is replaced by TxOutRef.
+
+```Haskell
+{-# INLINABLE mkPolicy #-}
+mkPolicy :: TxOutRef -> TokenName -> ScriptContext -> Bool
+mkPolicy oref tn ctx = traceIfFalse "UTxO not consumed"   hasUTxO           &&
+                        traceIfFalse "wrong amount minted" checkMintedAmount
+    where
+    info :: TxInfo
+    info = scriptContextTxInfo ctx
+
+    hasUTxO :: Bool
+    hasUTxO = any (\i -> txInInfoOutRef i == oref) $ txInfoInputs info
+
+    checkMintedAmount :: Bool
+    checkMintedAmount = case flattenValue (txInfoForge info) of
+        [(cs, tn', amt)] -> cs  == ownCurrencySymbol ctx && tn' == tn && amt == 1
+        _                -> False
+        
+        
+ ```
+ hasUTxO section. To validate if the UTxO provided is in the parameter provided in the script. It uses the haskell function any which return true if it can find it. False which goes to the exception.
+ 
+ checkMintedAmount. To limit the amount of tokens created to only 1. It uses the flattenvalue function which converts map to list of the form (symbol, tokenname, amount).
+ But the symbol is the hash only known at compile time. But there's a function called 'ownCurrencySymbol', then (ownCurrencySymbol cts, tokenname, amount)
+ 
+ ```Haskell
+ type NFTSchema =
+    BlockchainActions
+        .\/ Endpoint "mint" TokenName
+ ```
+ No need to parameters as only the TokenName is needed. 
+ 
+```Haskell
+mint :: TokenName -> Contract w NFTSchema Text ()
+mint tn = do
+    pk    <- Contract.ownPubKey
+    utxos <- utxoAt (pubKeyAddress pk)
+    case Map.keys utxos of
+        []       -> Contract.logError @String "no utxo found"
+        oref : _ -> do
+            let val     = Value.singleton (curSymbol oref tn) tn 1
+                lookups = Constraints.monetaryPolicy (policy oref tn) <> Constraints.unspentOutputs utxos
+                tx      = Constraints.mustForgeValue val <> Constraints.mustSpendPubKeyOutput oref
+            ledgerTx <- submitTxConstraintsWith @Void lookups tx
+            void $ awaitTxConfirmed $ txId ledgerTx
+            Contract.logInfo @String $ printf "forged %s" (show val)
+
+```
+
+
+
+
+
+
+
+
+
 
 
 
