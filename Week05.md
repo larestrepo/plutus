@@ -197,7 +197,7 @@ mkPolicy oref tn ctx = traceIfFalse "UTxO not consumed"   hasUTxO           &&
     BlockchainActions
         .\/ Endpoint "mint" TokenName
  ```
- No need to parameters as only the TokenName is needed. 
+ No need of parameters as only the TokenName is needed. 
  
 ```Haskell
 mint :: TokenName -> Contract w NFTSchema Text ()
