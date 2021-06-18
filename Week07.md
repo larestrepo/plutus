@@ -136,15 +136,146 @@ data FirstParams = FirstParams
     , fpChoice         :: !GameChoice
     } deriving (Show, Generic, FromJSON, ToJSON, ToSchema)
 ```
+The find function of f is finding the UtXO that contains the token.
 
+Now we have 2 contracts for the 2 players.
+
+```Haskell
+firstGame :: forall w s. HasBlockchainActions s => FirstParams -> Contract w s Text ()
+firstGame fp = do
+    pkh <- pubKeyHash <$> Contract.ownPubKey
+    let game = Game
+            { gFirst          = pkh
+            , gSecond         = fpSecond fp
+            , gStake          = fpStake fp
+            , gPlayDeadline   = fpPlayDeadline fp
+            , gRevealDeadline = fpRevealDeadline fp
+            , gToken          = AssetClass (fpCurrency fp, fpTokenName fp)
+            }
+        v    = lovelaceValueOf (fpStake fp) <> assetClassValue (gToken game) 1
+        c    = fpChoice fp
+        bs   = sha2_256 $ fpNonce fp `concatenate` if c == Zero then bsZero else bsOne
+        tx   = Constraints.mustPayToTheScript (GameDatum bs Nothing) v
+    ledgerTx <- submitTxConstraints (gameInst game) tx
+    void $ awaitTxConfirmed $ txId ledgerTx
+    logInfo @String $ "made first move: " ++ show (fpChoice fp)
+
+    void $ awaitSlot $ 1 + fpPlayDeadline fp
+
+    m <- findGameOutput game
+    case m of
+        Nothing             -> throwError "game output not found"
+        Just (oref, o, dat) -> case dat of
+            GameDatum _ Nothing -> do
+                logInfo @String "second player did not play"
+                let lookups = Constraints.unspentOutputs (Map.singleton oref o) <>
+                              Constraints.otherScript (gameValidator game)
+                    tx'     = Constraints.mustSpendScriptOutput oref (Redeemer $ PlutusTx.toData ClaimFirst)
+                ledgerTx' <- submitTxConstraintsWith @Gaming lookups tx'
+                void $ awaitTxConfirmed $ txId ledgerTx'
+                logInfo @String "reclaimed stake"
+
+            GameDatum _ (Just c') | c' == c -> do
+                logInfo @String "second player played and lost"
+                let lookups = Constraints.unspentOutputs (Map.singleton oref o)                                         <>
+                              Constraints.otherScript (gameValidator game)
+                    tx'     = Constraints.mustSpendScriptOutput oref (Redeemer $ PlutusTx.toData $ Reveal $ fpNonce fp) <>
+                              Constraints.mustValidateIn (to $ fpRevealDeadline fp)
+                ledgerTx' <- submitTxConstraintsWith @Gaming lookups tx'
+                void $ awaitTxConfirmed $ txId ledgerTx'
+                logInfo @String "victory"
+
+            _ -> logInfo @String "second player played and won"
+            
+            
+            
+```
+Second player contract is similar to first one, except that there is no nonce. 
     
     
+## State Machine
+
+Machine in one state that can transition to another state or to a final state.
+For example, Player 1 plays is one machine state represented by the datum of that UtXO. Transitions to subsequent states are transactions. 
+There are special support in Plutus library in Plutus.Contract.StateMachine.
+
+```Haskell
+data StateMachine s i = StateMachine {
+      -- | The transition function of the state machine. 'Nothing' indicates an invalid transition from the current state.
+      smTransition  :: State s -> i -> Maybe (TxConstraints Void Void, State s),
+
+      -- | Check whether a state is the final state
+      smFinal       :: s -> Bool,
+
+      -- | The condition checking function. Can be used to perform
+      --   checks on the pending transaction that aren't covered by the
+      --   constraints. 'smCheck' is always run in addition to checking the
+      --   constraints, so the default implementation always returns true.
+      smCheck       :: s -> i -> ScriptContext -> Bool,
+
+      -- | The 'AssetClass' of the thread token that identifies the contract
+      --   instance.
+      smThreadToken :: Maybe AssetClass
+    }
+
+```
+s: State. i:input. Correspond to datum and redeemer respectively.
+
+smFinal are special state in the sense that it does not produce a new state.
+
+```Haskell
+data GameDatum = GameDatum ByteString (Maybe GameChoice) | Finished
+    deriving Show
+```
+
+Now with the Finished state added to the GameDatum
+
+```Haskell
+transition :: Game -> State GameDatum -> GameRedeemer -> Maybe (TxConstraints Void Void, State GameDatum)
+transition game s r = case (stateValue s, stateData s, r) of
+    (v, GameDatum bs Nothing, Play c)
+        | lovelaces v == gStake game         -> Just ( Constraints.mustBeSignedBy (gSecond game)                    <>
+                                                       Constraints.mustValidateIn (to $ gPlayDeadline game)
+                                                     , State (GameDatum bs $ Just c) (lovelaceValueOf $ 2 * gStake game)
+                                                     )
+    (v, GameDatum _ (Just _), Reveal _)
+        | lovelaces v == (2 * gStake game)   -> Just ( Constraints.mustBeSignedBy (gFirst game)                     <>
+                                                       Constraints.mustValidateIn (to $ gRevealDeadline game)       <>
+                                                       Constraints.mustPayToPubKey (gFirst game) token
+                                                     , State Finished mempty
+                                                     )
+    (v, GameDatum _ Nothing, ClaimFirst)
+        | lovelaces v == gStake game         -> Just ( Constraints.mustBeSignedBy (gFirst game)                     <>
+                                                       Constraints.mustValidateIn (from $ 1 + gPlayDeadline game)   <>
+                                                       Constraints.mustPayToPubKey (gFirst game) token
+                                                     , State Finished mempty
+                                                     )
+    (v, GameDatum _ (Just _), ClaimSecond)
+        | lovelaces v == (2 * gStake game)   -> Just ( Constraints.mustBeSignedBy (gSecond game)                    <>
+                                                       Constraints.mustValidateIn (from $ 1 + gRevealDeadline game) <>
+                                                       Constraints.mustPayToPubKey (gFirst game) token
+                                                     , State Finished mempty
+                                                     )
+    _                                        -> Nothing
+    
+    
+```
+
+Transition section is the core of the code. 
+
+Differences with the EvenOdd.hs contract:
+
+Token validation is not needed anymore as state machine does the validation automatically. 
+
+CheckNonce in the old contract is not present anymore because this cannot be expressed in the constraints. So the smCheck can be used. 
 
 
+Create a StateMachineClient
 
+runInitalize, runs the state machine by taking the client (Datum) (Value)
 
+GetOnChainState takes the client and returns the state (UtXO). 
 
+RunStep creates transaction and submitts to move to the new state. All it needs is the redeemer. 
 
-
-
-
+TestStateMachine.hs is exactly the same test code as before, except that is calling the state machine contract. 
