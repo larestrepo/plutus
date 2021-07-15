@@ -128,8 +128,28 @@ tests = checkPredicateOptions
 
 It uses the checkPredicateOptions. Use walletFundsChange to verify what the balance of each wallet is expected. 
 
-# Lens 34:21
+# Optics-Lens
 
+When leading with Lenses is convention to called fields with leading underscore (ex. _staff).
+In the Lens.hs, there are datatype definitions which can be defined with simple Haskell, but it can become messy. To set city in datatype with goto function it would be like:
+
+```Haskell
+goTo :: String -> Company -> Company
+goTo there c = c {_staff = map movePerson (_staff c)}
+  where
+    movePerson p = p {_address = (_address p) {_city = there}}
+```
+Wit makeLenses it is easier to work with datatype, access and modify them.
+
+```Haskell
+makeLenses ''Company
+makeLenses ''Person
+makeLenses ''Address
+
+goTo' :: String -> Company -> Company
+goTo' there c = c & staff . each . address . city .~ there
+```
+MakeLenses convert datatype into an optic that let's you zoom into the datatype. 
 
     
 
