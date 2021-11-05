@@ -1,5 +1,9 @@
 ### Week03 requires an upgrade from plutus repo
 
+Now it is possible to start the playground with different timeout.
+
+    pluts-playground-server -i 120s
+
 In ~/plutus
     
     git pull
