@@ -50,6 +50,35 @@ Definition of Interval
         - => All slots in range must be after deadline
 
 Idea now is to parametized context which gives family of scripts instead of 1 script (same hash), as it is instantiated with different params ( diff scripts and addresses)
+
+```haskell
+--Before
+mkValidator :: VestingDatum -> () -> ScriptContext -> Bool
+
+--Datum parameterized
+mkValidator :: VestingParam -> () -> () -> ScriptContext -> Bool
+
+```
+Now the typedValidator takes an argument
+```haskell
+--before
+typedValidator :: Scripts.TypedValidator Vesting
+typedValidator = Scripts.mkTypedValidator @Vesting
+    $$(PlutusTx.compile [|| mkValidator ||])
+    $$(PlutusTx.compile [|| wrap ||])
+  where
+    wrap = Scripts.wrapValidator @VestingDatum @()
+ 
+ ---parameterized
+ typedValidator :: Scripts.TypedValidator Vesting
+typedValidator = Scripts.mkTypedValidator @Vesting
+    $$(PlutusTx.compile [|| mkValidator ||])
+    $$(PlutusTx.compile [|| wrap ||])
+  where
+    wrap = Scripts.wrapValidator @VestingDatum @()
+ ```
+ 
+
 Datum becomes a generic parameter and we add an additional param. But the problem is that this param is not known at compile time.
 
 - Solution: Use `PlutusTx.applyCode`
