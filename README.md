@@ -44,15 +44,15 @@ Confirm that the changes were taken by running
      ghc --version
      cabal --version
 
-For the pioneer plutus program is being used GHC 8.10.2 and Cabal 3.4.0.0
+For the pioneer plutus program I am using  GHC 8.10.7 and Cabal 3.4.1.0
 
-    ghcup install ghc 8.10.2
-    ghcup install cabal 3.4.0.0
+    ghcup install ghc 8.10.7
+    ghcup install cabal 3.4.1.0
 
 Now set the versions:
 
-    ghcup set ghc 8.10.2
-    ghcup set cabal 3.4.0.0
+    ghcup set ghc 8.10.7
+    ghcup set cabal 3.4.1.0
     
 Re-check your current GHC and Cabal version. If it's still not the correct version, try to restart your terminal.
 
