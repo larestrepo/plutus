@@ -56,23 +56,24 @@ Now set the versions:
     
 Re-check your current GHC and Cabal version. If it's still not the correct version, try to restart your terminal.
 
-### Building Plutus core
+### Building Plutus app
+
+Important to checkout the tag for the week to be compiled; this can be found in the plutus-pioneer-program repo, in the cabal.project file for each week.
 
 Clone the repo plutus core git
 
-    git clone https://github.com/input-output-hk/plutus.git
-    cd plutus
-    git checkout 3746610e53654a1167aeb4c6294c6096d16b0502
+    git clone https://github.com/input-output-hk/plutus-apps.git
+    cd plutus-apps
+    git checkout 41149926c108c71831cfe8d244c83b0ee4bf5c8a
 
-Build Plutus core with Nix
+Build Plutus PAB library core with Nix
 
-    nix build -f default.nix plutus.haskell.packages.plutus-core.components.library
+    nix build -f default.nix plutus-apps.haskell.packages.plutus-pab.components.library
 
 ### Start the plutus playground
 
-Go to Plutus repository and start nix-shell
+Start nix-shell
 
-    cd plutus
     nix-shell
 
 In plutus-playground-client folder start the server
@@ -82,11 +83,17 @@ In plutus-playground-client folder start the server
 
 In other terminal start the Playground client with nix-shell
 
-    cd plutus
     nix-shell
 
     cd plutus-playground-client 
     npm run start
+ 
+ ### Build plutus documentation
+ 
+ In other terminal in the plutus-apps folder
+ 
+     nix-shell
+     build-and-serve-docs
 
 ### Access the playground
 
@@ -124,17 +131,7 @@ Then go to Week01 folder and build cabal
     :l src/Week02/<name of the module> -> loads the module
     .r -> compiles and check for errors
     :t -> search command
-    
-    
-### Install Visual Studio code
-
-Install visual studio code in linux should be straightforward. Install the Haskell extensions and Vim editor if you like.
-
-With nix-shell active go to the project folder i.e. Week02 folder
-
-    code .
-    
-This should launch VS code....
+ 
 
 Happy coding.
 
