@@ -121,7 +121,7 @@ In the plutus folder start nix-shell
     
 Then go to Week01 folder and build cabal
 
-    cd ~/plutus-pioneer-program
+    cd ~/plutus-pioneer-program/week01
     cabal update
     cabal build
     
