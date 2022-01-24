@@ -181,7 +181,7 @@ grab n = do
     logInfo @String $ "collected gifts"
 
 ```
-
+## The Typed contract 
 So far we have worked with a high level data type representation. But we want to be more specific depending on the business case while defining the data types of Datum, Redeemer and Context. 
 
 For example, from the previous contract we could be more specific like this:
@@ -246,7 +246,7 @@ With PlutusTx.IsData.Class is possible to use toData to converta a value to Data
 
 When examining IsDat class we see that there are few possible combinations for conversions like I or (). But we know that we are going to need more data types for our datum and redeemer. In order to do this, we would normally need to define an IsData instance for any type that we wish to use. This will allow us to tell the compiler how to do the back and forth conversions. However, this again would be tedious as it is such a mechanical process. So, there is a mechanism in Plutus that does this for us.
 
-## The Forty-two contract 
+## The IsData contract 
 With this in mind, let's use custom datatypes:
 
 ```Haskell
