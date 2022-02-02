@@ -185,7 +185,24 @@ if Map.null utxos
     
 To determine the deadline, this was already explained how to make slot to time conversion 
 
-Idea now is to parametized context which gives family of scripts instead of 1 script (same hash), as it is instantiated with different params ( diff scripts and addresses)
+## Parameterized contract
+
+Idea now is to parametized context which gives family of scripts instead of 1 script (same hash), as it is instantiated with different params ( diff scripts and addresses).
+
+We can remove now the unstableMakeIsData line as the datum is now unit (). 
+
+Now the typedValidator is of the form:
+
+```haskell
+typedValidator :: VestingParam -> Scripts.TypedValidator Vesting
+typedValidator p = Scripts.mkTypedValidator @Vesting
+```
+The validator, valHash and scrAddress now take the p parameter. By using function composition notation is like this:
+
+```haskell
+validator :: VestingParam -> Validator
+validator = Scripts.validatorScript . typedValidator
+```
 
 ```haskell
 --Before
@@ -195,6 +212,14 @@ mkValidator :: VestingDatum -> () -> ScriptContext -> Bool
 mkValidator :: VestingParam -> () -> () -> ScriptContext -> Bool
 
 ```
+
+Datum becomes a generic parameter and we add an additional param. But the problem is that this param is not known at compile time.
+
+- Solution: Use `PlutusTx.applyCode`
+- With the liftCode function that takes a parameter and turns it into Plutus script code.
+- Different options of parameters gives different scripts hashes. 
+
+
 Now the typedValidator takes an argument
 ```haskell
 --before
@@ -206,18 +231,59 @@ typedValidator = Scripts.mkTypedValidator @Vesting
     wrap = Scripts.wrapValidator @VestingDatum @()
  
  ---parameterized
- typedValidator :: Scripts.TypedValidator Vesting
-typedValidator = Scripts.mkTypedValidator @Vesting
-    $$(PlutusTx.compile [|| mkValidator ||])
+typedValidator :: VestingParam -> Scripts.TypedValidator Vesting
+typedValidator p = Scripts.mkTypedValidator @Vesting
+    ($$(PlutusTx.compile [|| mkValidator ||]) `PlutusTx.applyCode` PlutusTx.liftCode p)
     $$(PlutusTx.compile [|| wrap ||])
   where
-    wrap = Scripts.wrapValidator @VestingDatum @()
+    wrap = Scripts.wrapValidator @() @()
  ```
  
+ So we cannot convert to Plutus core mkValidator p because p is not known at compile time. What we could do is to convert to Plutus Core both mkValidator and p separately and then combine them. Still p is not known at compile time, but p alone is just data and not a function. We can use the liftcode class to convert data into Plutus Core. 
+ 
+ With this, we need to add:
+ 
+ ```haskell
+ PlutusTx.makeLift ''VestingParam
+ ```
+ 
+ If we look at liftcode class it takes more than one param, but haskell does not allow to take more than one, so it won't compile. We need to add an extension:
+ {-# LANGUAGE MultiParamTypeClasses #-}
+ 
+ For the offchain part...
+ 
+ Give does not change much. Grab now needs one paramenter which is the deadline. As it is now parameterized, the deadline for each grab must be known or needs to be provided. 
+ 
+ In the grab we can now validate if the deadline has passed as we already know it in the params. Once is done, we can build the utxos associated to the address based on the params and make the same validation as before.
+ 
+ ```haskell
+ grab d = do
+    now   <- currentTime
+    pkh   <- ownPaymentPubKeyHash
+    if now < d
+        then logInfo @String $ "too early"
+        else do
+            let p = VestingParam
+                        { beneficiary = pkh
+                        , deadline    = d
+                        }
+            utxos <- utxosAt $ scrAddress p
+            if Map.null utxos
+                then logInfo @String $ "no gifts available"
+                else do
+                    let orefs   = fst <$> Map.toList utxos
+                        lookups = Constraints.unspentOutputs utxos      <>
+                                  Constraints.otherScript (validator p)
+                        tx :: TxConstraints Void Void
+                        tx      = mconcat [Constraints.mustSpendScriptOutput oref unitRedeemer | oref <- orefs] <>
+                                  Constraints.mustValidateIn (from now)
+                    ledgerTx <- submitTxConstraintsWith @Void lookups tx
+                    void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
+                    logInfo @String $ "collected gifts"
+   ```
+   
+   
+ 
+ 
 
-Datum becomes a generic parameter and we add an additional param. But the problem is that this param is not known at compile time.
-
-- Solution: Use `PlutusTx.applyCode`
-- With the liftCode function that takes a parameter and turns it into Plutus script code.
-- Different chose of parameters gives different scripts hashes. 
 
