@@ -17,6 +17,11 @@ But IO is desirable to have useful programs. Way to declare inputs/oututs to fun
 
 It means that the function is computed but may contain side effects.
 
+>> (>>) (sequence): It is a function that combines functions to be executed in sequence, but it ignores the results or does not use the result for the next function.
+>> (>>=) (bind): Similar to previous but it does not ignore the result from the previous rather it uses it for the next function. 
+
+There is another, very important, way to create IO actions, and that is to create recipes that immediately return results without performing any side effects.
+
 That brings us to:
 
 ## Maybe
