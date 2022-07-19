@@ -13,7 +13,11 @@
 
 Make Single user installation. For details go to https://nixos.org
 
-        sh <(curl -L https://nixos.org/nix/install) --no-daemon
+    sh <(curl -L https://nixos.org/nix/install) --no-daemon
+
+or 
+
+    curl -L https://nixos.org/nix/install | sh
         
  Do not forget to source the path as recommended at the end of the installation: 
  

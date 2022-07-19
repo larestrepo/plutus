@@ -4,6 +4,13 @@
 
 DataTypes
 
+Custom Haskell data types (high level datatypes). Used in this course mostly. But it has as impact that is more expensive to process. In real life applications, this is something to be considered whether to use high level data types or low level (BuiltinData).
+
+In module PlutusTx there is data type called BuiltinData with 2 functions:
+
+- buildinDataToData
+- dataToBuiltinData
+
 newtype **BuiltinData**
 
     Important note about BuildinData: you should use this type in your on-chain code, and in any data structures that you want to be representable on-chain.
@@ -22,6 +29,45 @@ List [Data]
 I Integer	 
 B ByteString
 ```
+The high level is done by using the typed version of the datum, redeemer and context rather than the untyped versions (BuiltinData). 
+```Haskell
+import PlutusTx
+:t I 42
+:set -XOverloadedStrings
+```
+
+```haskell
+mkValidator :: BuiltinData -> BuiltinData -> BuiltinData -> ()
+mkValidator _ _ _ = ()
+
+{-# INLINABLE mkValidator #-}
+validator :: Validator
+validator = mkValidatorScript $$(PlutusTx.compile [|| mkValidator ||])
+```
+- Low level definition of the validator with the use of BuiltinData
+- INLANABLE unfold the mkValidator function when compiling
+- [|| ||] Oxford brackets, compiles haskell code into plutuscore.
+- '$$ splice the syntax from PlutusCore
+
+In repl
+```haskell
+import Ledger.Scripts
+import PlutusTx
+:t mkValidatorScript
+:t compile
+unScript $ getValidator validator
+```
+```haskell
+valHash :: Ledger.ValidatorHash
+valHash = Scripts.validatorHash validator
+
+scrAddress :: Ledger.Address
+scrAddress = scriptAddress validator
+```
+- valHash = validator Hash
+- scrAddress = script address
+
+
  
 ## The give contract 
 
