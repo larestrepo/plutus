@@ -78,11 +78,14 @@ That brings us to:
 
 ## `Contract` Monad
 
+  contract w s e a
+
 - Off-chain code which runs in wallet
 - Type parameters
   - `a` overall result of computation
-  - `w` logging, like in writer monad
-  - `s` blockchain specific capabilities
+  - `w` logging, like in writer monad. 
+    - But not only, it can be used to pass information to a subsequent contract.
+  - `s` (schema) blockchain specific capabilities
     - Like waiting slots
     - Waiting for transaction
     - Finding out own private key
@@ -154,7 +157,7 @@ Access the repl: cabal repl
 Load the Contract.hs module :l src/Week04/Contract.hs
 And executing the test: myTest
 
-## We can catch errors and handle them by creating a second contracto to handle errors. 
+## We can catch errors and handle them by creating a second contract to handle errors. 
 
     handleError :: forall w s e e' a.
       (e -> Contract w s e' a)  -- first argument type
