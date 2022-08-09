@@ -84,7 +84,7 @@ That brings us to:
 - Type parameters
   - `a` overall result of computation
   - `w` logging, like in writer monad. 
-    - But not only, it can be used to pass information to a subsequent contract.
+    - But not only, it can be used to pass information to a subsequent contract or to report the contract state to the user
   - `s` (schema) blockchain specific capabilities
     - Like waiting slots
     - Waiting for transaction
